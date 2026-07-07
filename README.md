@@ -16,3 +16,16 @@ PM> git push origin C#Part
 
 
 git checkout pythonPart/python-api -- src
+
+
+# Создать новый репозиторий в текущей папке
+git init
+
+# Клонировать существующий репозиторий
+git clone https://github.com/username/repository.git
+
+# Клонировать в конкретную папку
+git clone https://github.com/username/repository.git /path/to/folder
+
+# Клонировать конкретную ветку
+git clone -b branch-name https://github.com/username/repository.git
