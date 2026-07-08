@@ -17,10 +17,13 @@
 1. **Client API (.NET 8)** - принимает файлы от пользователей, управляет задачами
 2. **Python API (FastAPI)** - обрабатывает CSV файлы и генерирует PDF отчеты
 
-![Мой скриншот]("https://github.com/G4sTt/ReportFlow/blob/main/%D0%90%D1%80%D1%85%D0%B8%D1%82%D0%B5%D0%BA%D1%82%D1%83%D1%80%D0%B01.png")
-![Мой скриншот]("C:\Users\timon\Desktop\Картинки\Архитектура2.png")
-![Мой скриншот]("C:\Users\timon\Desktop\Картинки\Архитектура3.png")
-![Мой скриншот]("C:\Users\timon\Desktop\Картинки\Архитектура4.png")
+## Ожидаемый ход работы программы на схеме:
+
+
+<img width="567" height="492" alt="Архитектура1" src="https://github.com/user-attachments/assets/922345cc-de3f-485a-a565-e8507e6efd0c" />
+<img width="573" height="525" alt="Архитектура2" src="https://github.com/user-attachments/assets/8d226395-bd42-4291-9428-ec52f5ff823b" />
+<img width="577" height="437" alt="Архитектура3" src="https://github.com/user-attachments/assets/0f112342-f754-43f0-af14-9b78e3086041" />
+
 
 ## 🚀 Быстрый старт
 ### Требования
