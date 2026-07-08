@@ -17,7 +17,7 @@
 1. **Client API (.NET 8)** - принимает файлы от пользователей, управляет задачами
 2. **Python API (FastAPI)** - обрабатывает CSV файлы и генерирует PDF отчеты
 ## Архитектура на схеме:
-<img width="547" height="682" alt="Архитектура5" src="https://github.com/user-attachments/assets/c5db718b-7337-4d97-9561-943c3360e498" />
+<img width="446" height="602" alt="Архитектура5" src="https://github.com/user-attachments/assets/f3c97bfe-4d22-46fb-8d68-0b7259c46299" />
 
 
 
