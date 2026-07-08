@@ -1,7 +1,6 @@
 Здесь находятся файлы, которые ты должен сделать в своей ветке в соответствии с архитектурой из документации, дальше расписаны файлы на Python:
 
-PythonApi/main.py
----
+#PythonApi/main.py
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import asyncio
@@ -116,12 +115,385 @@ async def health_check():
     Проверка здоровья сервиса
     """
     return {"status": "healthy", "service": "python-api"}
----
-
-
-
 
 
 if __name__ == "__main__":
     import uvicorn
     uvicorn.run(app, host="0.0.0.0", port=8000)
+
+
+
+
+#PythonApi/config.py
+import os
+from dotenv import load_dotenv
+
+# Загружаем переменные окружения из .env файла
+load_dotenv()
+
+
+class Settings:
+    # Директории для файлов
+    UPLOADS_DIR = os.getenv("UPLOADS_DIR", "/shared/uploads")
+    RESULTS_DIR = os.getenv("RESULTS_DIR", "/shared/results")
+    
+    # URL .NET API для callbacks
+    CLIENT_API_BASE_URL = os.getenv("CLIENT_API_BASE_URL", "http://client-api:8080")
+    
+    # Настройки логирования
+    LOG_LEVEL = os.getenv("LOG_LEVEL", "INFO")
+
+
+settings = Settings()
+
+
+
+
+#PythonApi/models/task_models.py
+from pydantic import BaseModel
+
+
+class ProcessTaskRequest(BaseModel):
+    taskId: str
+    inputPath: str
+    callbackUrl: str
+
+
+class ProcessTaskResponse(BaseModel):
+    taskId: str
+    status: str
+    message: str
+
+
+
+
+#PythonApi/services/report_generator.py
+import csv
+import os
+from reportlab.lib import colors
+from reportlab.lib.pagesizes import letter, A4
+from reportlab.platypus import SimpleDocTemplate, Table, TableStyle, Paragraph, Spacer
+from reportlab.lib.styles import getSampleStyleSheet, ParagraphStyle
+from reportlab.lib.units import inch
+from datetime import datetime
+
+
+def generate_report_from_csv(input_path: str, output_path: str) -> bool:
+    """
+    Генерирует красивый PDF отчет из CSV файла
+    
+    Args:
+        input_path: Путь к входному CSV файлу
+        output_path: Путь для сохранения PDF
+    
+    Returns:
+        True если успешно, False иначе
+    """
+    try:
+        # Читаем CSV файл
+        data = []
+        headers = []
+        
+        with open(input_path, 'r', encoding='utf-8') as csvfile:
+            reader = csv.reader(csvfile)
+            headers = next(reader)  # Первая строка - заголовки
+            
+            for row in reader:
+                if row:  # Пропускаем пустые строки
+                    data.append(row)
+        
+        if not headers:
+            print("CSV файл пуст или не содержит заголовков")
+            return False
+        
+        # Создаем PDF документ
+        doc = SimpleDocTemplate(
+            output_path,
+            pagesize=A4,
+            rightMargin=72,
+            leftMargin=72,
+            topMargin=72,
+            bottomMargin=72
+        )
+        
+        elements = []
+        
+        # Стили
+        styles = getSampleStyleSheet()
+        
+        # Заголовок отчета
+        title_style = ParagraphStyle(
+            'CustomTitle',
+            parent=styles['Heading1'],
+            fontSize=24,
+            spaceAfter=30,
+            alignment=1  # По центру
+        )
+        
+        title = Paragraph("Отчет", title_style)
+        elements.append(title)
+        
+        # Информация о файле
+        info_style = ParagraphStyle(
+            'FileInfo',
+            parent=styles['Normal'],
+            fontSize=10,
+            textColor=colors.gray
+        )
+        
+        file_info = f"Источник: {os.path.basename(input_path)}<br/>Дата генерации: {datetime.now().strftime('%d.%m.%Y %H:%M:%S')}"
+        elements.append(Paragraph(file_info, info_style))
+        elements.append(Spacer(1, 20))
+        
+        # Создаем таблицу
+        # Добавляем заголовки
+        table_data = [headers] + data
+        
+        # Вычисляем ширину колонок
+        col_count = len(headers)
+        col_width = (A4[0] - 144) / col_count  # 144 = leftMargin + rightMargin
+        
+        col_widths = [col_width] * col_count
+        
+        table = Table(table_data, colWidths=col_widths)
+        
+        # Стиль таблицы
+        table_style = TableStyle([
+            # Заголовок
+            ('BACKGROUND', (0, 0), (-1, 0), colors.HexColor('#2C3E50')),
+            ('TEXTCOLOR', (0, 0), (-1, 0), colors.whitesmoke),
+            ('ALIGN', (0, 0), (-1, 0), 'CENTER'),
+            ('FONTNAME', (0, 0), (-1, 0), 'Helvetica-Bold'),
+            ('FONTSIZE', (0, 0), (-1, 0), 12),
+            ('BOTTOMPADDING', (0, 0), (-1, 0), 12),
+            ('TOPPADDING', (0, 0), (-1, 0), 12),
+            
+            # Данные
+            ('BACKGROUND', (0, 1), (-1, -1), colors.white),
+            ('TEXTCOLOR', (0, 1), (-1, -1), colors.black),
+            ('ALIGN', (0, 1), (-1, -1), 'CENTER'),
+            ('FONTNAME', (0, 1), (-1, -1), 'Helvetica'),
+            ('FONTSIZE', (0, 1), (-1, -1), 10),
+            ('TOPPADDING', (0, 1), (-1, -1), 6),
+            ('BOTTOMPADDING', (0, 1), (-1, -1), 6),
+            
+            # Границы
+            ('GRID', (0, 0), (-1, -1), 1, colors.HexColor('#BDC3C7')),
+            
+            # Чередование цветов строк
+            ('BACKGROUND', (0, 1), (-1, -1), colors.HexColor('#ECF0F1')),
+            ('BACKGROUND', (0, 2), (-1, -1), colors.white),
+        ])
+        
+        # Применяем чередование цветов
+        for i in range(1, len(table_data)):
+            if i % 2 == 0:
+                table_style.add('BACKGROUND', (0, i), (-1, i), colors.HexColor('#ECF0F1'))
+            else:
+                table_style.add('BACKGROUND', (0, i), (-1, i), colors.white)
+        
+        table.setStyle(table_style)
+        elements.append(table)
+        
+        # Футер
+        elements.append(Spacer(1, 30))
+        footer_style = ParagraphStyle(
+            'Footer',
+            parent=styles['Normal'],
+            fontSize=8,
+            textColor=colors.gray,
+            alignment=1
+        )
+        elements.append(Paragraph("Сгенерировано автоматически системой ReportFlow", footer_style))
+        
+        # Строим PDF
+        doc.build(elements)
+        
+        print(f"PDF успешно создан: {output_path}")
+        return True
+    
+    except Exception as e:
+        print(f"Ошибка при генерации PDF: {str(e)}")
+        import traceback
+        traceback.print_exc()
+        return False
+
+
+
+
+#PythonApi/requirements.txt
+fastapi==0.109.0
+uvicorn==0.27.0
+pydantic==2.5.3
+reportlab==4.0.9
+aiohttp==3.9.1
+python-dotenv==1.0.0
+
+
+
+
+#PythonApi/Dockerfile
+FROM python:3.11-slim
+
+WORKDIR /app
+
+# Копируем зависимости и устанавливаем их
+COPY requirements.txt .
+RUN pip install --no-cache-dir -r requirements.txt
+
+# Копируем код приложения
+COPY . .
+
+# Создаем директории для файлов
+RUN mkdir -p /shared/uploads /shared/results
+
+EXPOSE 8000
+
+CMD ["uvicorn", "main:app", "--host", "0.0.0.0", "--port", "8000"]
+
+
+
+
+#docker-compose.yml
+version: '3.8'
+
+services:
+  # SQL Server Database
+  db:
+    image: mcr.microsoft.com/mssql/server:2022-latest
+    environment:
+      SA_PASSWORD: "YourStrong@Passw0rd"
+      ACCEPT_EULA: "Y"
+    ports:
+      - "1433:1433"
+    volumes:
+      - sqlserver_data:/var/opt/mssql
+    networks:
+      - reportflow-network
+    healthcheck:
+      test: ["CMD-SHELL", "/opt/mssql-tools/bin/sqlcmd -S localhost -U sa -P 'YourStrong@Passw0rd' -Q 'SELECT 1'"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+
+  # .NET Client API
+  client-api:
+    build:
+      context: ./Client
+      dockerfile: Dockerfile
+    ports:
+      - "5000:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ConnectionStrings__DefaultConnection=Server=db,1433;Database=ReportFlowDb;User Id=sa;Password=YourStrong@Passw0rd;TrustServerCertificate=True;
+      - PythonApi__BaseUrl=http://python-api:8000
+      - ClientApi__BaseUrl=http://client-api:8080
+      - SharedPaths__Uploads=/shared/uploads
+      - SharedPaths__Results=/shared/results
+    volumes:
+      - shared-data:/shared
+    depends_on:
+      db:
+        condition: service_healthy
+    networks:
+      - reportflow-network
+
+  # Python Processing API
+  python-api:
+    build:
+      context: ./PythonApi
+      dockerfile: Dockerfile
+    ports:
+      - "8000:8000"
+    environment:
+      - UPLOADS_DIR=/shared/uploads
+      - RESULTS_DIR=/shared/results
+      - CLIENT_API_BASE_URL=http://client-api:8080
+      - LOG_LEVEL=INFO
+    volumes:
+      - shared-data:/shared
+    depends_on:
+      - client-api
+    networks:
+      - reportflow-network
+
+volumes:
+  sqlserver_data:
+  shared-data:
+
+networks:
+  reportflow-network:
+    driver: bridge
+
+
+
+
+#.gitignore
+# Build results
+[Dd]ebug/
+[Rr]elease/
+x64/
+x86/
+[Aa][Rr][Mm]/
+[Aa][Rr][Mm]64/
+bld/
+[Bb]in/
+[Oo]bj/
+[Ll]og/
+[Ll]ogs/
+
+# Visual Studio files
+*.suo
+*.user
+*.userosscache
+*.sln.docstates
+.vs/
+.vscode/
+
+# NuGet Packages
+*.nupkg
+*.snupkg
+**/packages/*
+!**/packages/build/
+
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+build/
+develop-eggs/
+*.egg-info/
+.env
+venv/
+env/
+
+# IDE
+.idea/
+*.swp
+*.swo
+*~
+
+# OS
+.DS_Store
+Thumbs.db
+
+# Docker
+docker-compose.override.yml
+
+
+
+
+#test_data.csv
+Наименование товара,Количество,Цена за единицу,Сумма,Категория
+Ноутбук ASUS,5,75000,375000,Электроника
+Мышь Logitech,20,1500,30000,Периферия
+Клавиатура Corsair,10,5000,50000,Периферия
+Монитор Samsung,8,25000,200000,Электроника
+Наушники Sony,15,8000,120000,Аудио
+Веб-камера Logitech,12,4500,54000,Периферия
+USB-хаб,25,1200,30000,Аксессуары
+SSD диск 1TB,7,9000,63000,Комплектующие
+Оперативная память 16GB,10,6500,65000,Комплектующие
+Блок питания 750W,6,8500,51000,Комплектующие
