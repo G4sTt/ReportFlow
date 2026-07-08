@@ -1,0 +1,127 @@
+Здесь находятся файлы, которые ты должен сделать в своей ветке в соответствии с архитектурой из документации, дальше расписаны файлы на Python:
+
+PythonApi/main.py
+---
+from fastapi import FastAPI, HTTPException
+from pydantic import BaseModel
+import asyncio
+import os
+from typing import Optional
+
+from config import settings
+from services.report_generator import generate_report_from_csv
+from models.task_models import ProcessTaskRequest, ProcessTaskResponse
+
+app = FastAPI(title="ReportFlow Python API", version="1.0.0")
+
+
+class CallbackUpdate(BaseModel):
+    status: str
+    resultFilePath: Optional[str] = None
+    errorMessage: Optional[str] = None
+
+
+@app.post("/process")
+async def process_task(request: ProcessTaskRequest):
+    """
+    Получает задачу на обработку CSV файла в PDF
+    """
+    try:
+        print(f"Получена задача: {request.taskId}")
+        
+        # Проверяем существование входного файла
+        if not os.path.exists(request.inputPath):
+            raise HTTPException(status_code=404, detail=f"Input file not found: {request.inputPath}")
+        
+        # Определяем путь для выходного файла
+        results_dir = settings.RESULTS_DIR
+        os.makedirs(results_dir, exist_ok=True)
+        
+        output_path = os.path.join(results_dir, f"{request.taskId}.pdf")
+        
+        # Запускаем генерацию отчета в фоне
+        asyncio.create_task(
+            process_in_background(request.taskId, request.inputPath, output_path, request.callbackUrl)
+        )
+        
+        return ProcessTaskResponse(
+            taskId=request.taskId,
+            status="accepted",
+            message="Task accepted for processing"
+        )
+    
+    except HTTPException:
+        raise
+    except Exception as e:
+        print(f"Ошибка при приеме задачи: {str(e)}")
+        raise HTTPException(status_code=500, detail=str(e))
+
+
+async def process_in_background(task_id: str, input_path: str, output_path: str, callback_url: str):
+    """
+    Асинхронная обработка задачи в фоне
+    """
+    try:
+        print(f"Начало обработки задачи {task_id}")
+        
+        # Генерируем PDF из CSV
+        success = generate_report_from_csv(input_path, output_path)
+        
+        if success:
+            # Отправляем успешный callback
+            await send_callback(callback_url, {
+                "status": "Ready",
+                "resultFilePath": output_path
+            })
+            print(f"Задача {task_id} успешно завершена")
+        else:
+            # Отправляем callback с ошибкой
+            await send_callback(callback_url, {
+                "status": "Failed",
+                "errorMessage": "Failed to generate report from CSV"
+            })
+            print(f"Задача {task_id} завершилась с ошибкой")
+    
+    except Exception as e:
+        print(f"Ошибка при обработке задачи {task_id}: {str(e)}")
+        try:
+            await send_callback(callback_url, {
+                "status": "Failed",
+                "errorMessage": f"Processing error: {str(e)}"
+            })
+        except:
+            pass
+
+
+async def send_callback(callback_url: str, data: dict):
+    """
+    Отправляет callback на .NET API с обновлением статуса
+    """
+    import aiohttp
+    
+    try:
+        async with aiohttp.ClientSession() as session:
+            async with session.put(callback_url, json=data) as response:
+                if response.status == 200:
+                    print(f"Callback успешно отправлен: {callback_url}")
+                else:
+                    print(f"Ошибка при отправке callback. Статус: {response.status}")
+    except Exception as e:
+        print(f"Ошибка при отправке callback: {str(e)}")
+
+
+@app.get("/health")
+async def health_check():
+    """
+    Проверка здоровья сервиса
+    """
+    return {"status": "healthy", "service": "python-api"}
+---
+
+
+
+
+
+if __name__ == "__main__":
+    import uvicorn
+    uvicorn.run(app, host="0.0.0.0", port=8000)
