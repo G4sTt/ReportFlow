@@ -43,7 +43,7 @@ ReportFlow/
 │   ├── appsettings.json
 │   ├── Client.csproj
 │   └── Dockerfile
-├── PythonApi/                 # Python FastAPI
+├── PythonApi/   версия пети              # Python FastAPI
 │   ├── main.py
 │   ├── config.py
 │   ├── requirements.txt
@@ -57,3 +57,26 @@ ReportFlow/
 ├── test_data.csv
 └── README.md
 
+PythonApi/ версия саши
+├── main.py                    # FastAPI приложение, эндпоинты
+├── config.py                  # Настройки из .env
+├── requirements.txt           # Зависимости
+├── Dockerfile
+├── .env
+├── services/
+│   ├── __init__.py
+│   ├── report_generator.py    # Генерация PDF
+│   ├── file_service.py        # Работа с файлами
+│   └── callback_service.py    # Уведомление .NET API
+├── models/
+│   ├── __init__.py
+│   └── task_models.py         # Pydantic модели
+├── utils/
+│   ├── __init__.py
+│   └── logger.py              # Логирование
+├── raw/                       # 🗑 "Грязные" файлы (исходные CSV)
+│   └── .gitkeep
+├── processed/                 # ✨ "Чистые" файлы (готовые PDF)
+│   └── .gitkeep
+└── tests/
+    └── test_api.py
