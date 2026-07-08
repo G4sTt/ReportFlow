@@ -1,6 +1,6 @@
 Здесь находятся файлы, которые ты должен сделать в своей ветке в соответствии с архитектурой из документации, дальше расписаны файлы на Python:
 
-#PythonApi/main.py
+# PythonApi/main.py
 from fastapi import FastAPI, HTTPException
 from pydantic import BaseModel
 import asyncio
