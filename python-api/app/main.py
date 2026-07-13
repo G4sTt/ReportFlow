@@ -141,3 +141,11 @@ async def health_check():
         "version": "1.0.0-test",
         "mode": "TEST (no database)"
     }
+
+if __name__ == "__main__":
+    import uvicorn
+    print("\n" + "="*60)
+    print("🚀 Сервис запущен!")
+    print("📄 Открой в браузере: http://localhost:9000/docs")
+    print("="*60 + "\n")
+    uvicorn.run("app.main:app", host="0.0.0.0", port=8000, reload=True)
