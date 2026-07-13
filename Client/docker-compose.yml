@@ -1,0 +1,66 @@
+﻿services:
+  client:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: reportflow-client
+    ports:
+      - "8080:8080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - ASPNETCORE_URLS=http://+:8080
+      - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=reportflow;Username=postgres;Password=postgres123
+      - PythonApi__BaseUrl=http://python-api:5000
+    depends_on:
+      db:
+        condition: service_healthy
+      python-api:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - reportflow-network
+
+  python-api:
+    build:
+      context: ./python-api
+      dockerfile: Dockerfile
+    container_name: reportflow-python
+    ports:
+      - "5000:5000"
+    environment:
+      - PYTHONUNBUFFERED=1
+      - DATABASE_URL=postgresql://postgres:postgres123@db:5432/reportflow
+    depends_on:
+      db:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - reportflow-network
+
+  db:
+    image: postgres:16-alpine
+    container_name: reportflow-db
+    environment:
+      POSTGRES_DB: reportflow
+      POSTGRES_USER: postgres
+      POSTGRES_PASSWORD: postgres123
+    ports:
+      - "5432:5432"
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres -d reportflow"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+    restart: unless-stopped
+    networks:
+      - reportflow-network
+
+volumes:
+  postgres_data:
+    driver: local
+
+networks:
+  reportflow-network:
+    driver: bridge

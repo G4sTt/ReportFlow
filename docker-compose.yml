@@ -1,0 +1,6 @@
+services:
+  client:
+    image: ${DOCKER_REGISTRY-}client
+    build:
+      context: ReportFlow
+      dockerfile: Client/Dockerfile
