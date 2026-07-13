@@ -1,6 +1,69 @@
 services:
-  client:
-    image: ${DOCKER_REGISTRY-}client
+  python-api:
     build:
-      context: ReportFlow
-      dockerfile: Client/Dockerfile
+      context: ./python-api
+      dockerfile: Dockerfile
+    container_name: python-api
+    ports:
+      - "9000:9000"
+    volumes:
+      - ./python-api/uploads:/app/uploads
+      - ./python-api/results:/app/results
+    environment:
+      - DATABASE_URL=postgresql+asyncpg://postgres:postgres@db:5432/reportflow_db
+    depends_on:
+      db:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://localhost:8000/health')"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+      start_period: 10s
+    networks:
+      - reportflow-network
+
+  client:
+    build:
+      context: ./Client
+      dockerfile: Dockerfile
+    container_name: client
+    ports:
+      - "9080:9080"
+    environment:
+      - ASPNETCORE_ENVIRONMENT=Development
+      - PythonApi__BaseUrl=http://python-api:8000
+      - ConnectionStrings__DefaultConnection=Host=db;Port=5432;Database=reportflow_db;Username=postgres;Password=postgres
+    depends_on:
+      python-api:
+        condition: service_healthy
+      db:
+        condition: service_healthy
+    networks:
+      - reportflow-network
+
+  db:
+    image: postgres:15-alpine
+    container_name: postgres-db
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=reportflow_db
+    ports:
+      - "5433:5433"
+    volumes:
+      - postgres-data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U postgres"]
+      interval: 5s
+      timeout: 3s
+      retries: 5
+    networks:
+      - reportflow-network
+
+volumes:
+  postgres-data:
+
+networks:
+  reportflow-network:
+    driver: bridge
