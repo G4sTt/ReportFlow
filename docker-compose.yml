@@ -5,7 +5,7 @@ services:
       dockerfile: Dockerfile
     container_name: python-api
     ports:
-      - "9000:9000"
+      - "9000:8000"    # ✅ ИСПРАВЛЕНО
     volumes:
       - ./python-api/uploads:/app/uploads
       - ./python-api/results:/app/results
@@ -29,7 +29,7 @@ services:
       dockerfile: Dockerfile
     container_name: client
     ports:
-      - "9080:9080"
+      - "9080:8080"    # ✅ ИСПРАВЛЕНО
     environment:
       - ASPNETCORE_ENVIRONMENT=Development
       - PythonApi__BaseUrl=http://python-api:8000
@@ -50,7 +50,7 @@ services:
       - POSTGRES_PASSWORD=postgres
       - POSTGRES_DB=reportflow_db
     ports:
-      - "5433:5433"
+      - "5433:5432"    # ✅ ИСПРАВЛЕНО
     volumes:
       - postgres-data:/var/lib/postgresql/data
     healthcheck:
